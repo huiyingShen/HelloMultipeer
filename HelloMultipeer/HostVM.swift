@@ -86,13 +86,29 @@ extension HostVM: MCSessionDelegate,StreamDelegate {
         print("State \(state.rawValue)")
         connectedPeers = session.connectedPeers
     }
-    
+    func s2float2(_ s:String) -> (Float,Float){
+        let p = s.split(separator: ",")
+        let x  = (p[0] as NSString).floatValue
+        let y  = (p[1] as NSString).floatValue
+        return (x,y)
+    }
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         print("data received: \(data)")
         if let message = String(data: data, encoding: .utf8) {
             print("Received message: \(message) from \(peerID.displayName)")
             if message.contains("Image, Please"){
                 viewController?.sendImage = true
+            } else if message.contains("calib"){
+                let dat = message.split(separator: "\n")
+                let wh = s2float2(String(dat[1]))
+                print("w, h = \(wh.0), \(wh.1)")
+                viewController?.clearCalib()
+                for p in dat[2...]{
+                    print(p)
+                    let xy = s2float2(String(p))
+                    viewController?.addCalibPoint(CGPoint(x:Double(xy.0),y:Double(xy.1)))
+                }
+                viewController?.redraw()
             }
         }
     }
@@ -149,6 +165,10 @@ extension HostVM: MCSessionDelegate,StreamDelegate {
     
     func sendImageStream(_ image: UIImage) {
         print("in sendImageStream()")
+        if peerSession.connectedPeers.isEmpty {
+            print("peerSession.connectedPeers.isEmpty!!!")
+            return
+        }
         if let imageData = image.jpegData(compressionQuality: 0.25),
            let outputStream = try? peerSession.startStream(withName: "imageStream", toPeer: peerSession.connectedPeers.first!) {
             outputStream.open()
@@ -168,7 +188,7 @@ extension HostVM: MCSessionDelegate,StreamDelegate {
     }
 
     func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
-        print("in func stream()")
+//        print("in func stream()")
         guard let inputStream = aStream as? InputStream else { return }
 
         switch eventCode {
