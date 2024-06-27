@@ -87,7 +87,7 @@ extension HostVM: MCSessionDelegate,StreamDelegate {
         connectedPeers = session.connectedPeers
     }
     func s2float2(_ s:String) -> (Float,Float){
-        let p = s.split(separator: ",")
+        let p = s.split(separator: " ")
         let x  = (p[0] as NSString).floatValue
         let y  = (p[1] as NSString).floatValue
         return (x,y)
@@ -98,12 +98,12 @@ extension HostVM: MCSessionDelegate,StreamDelegate {
             print("Received message: \(message) from \(peerID.displayName)")
             if message.contains("Image, Please"){
                 viewController?.sendImage = true
-            } else if message.contains("calib"){
+            } else if message.contains("Landmark Data:"){
                 let dat = message.split(separator: "\n")
-                let wh = s2float2(String(dat[1]))
-                print("w, h = \(wh.0), \(wh.1)")
+//                let wh = s2float2(String(dat[1]))
+//                print("w, h = \(wh.0), \(wh.1)")
                 viewController?.clearCalib()
-                for p in dat[2...]{
+                for p in dat[1...]{
                     print(p)
                     let xy = s2float2(String(p))
                     viewController?.addCalibPoint(CGPoint(x:Double(xy.0),y:Double(xy.1)))

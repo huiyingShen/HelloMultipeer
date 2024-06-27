@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 import Combine
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UIScrollViewDelegate {
     
     private var viewModel: HostVM!
     private var disposables = Set<AnyCancellable>()
@@ -21,6 +21,7 @@ class ViewController: UIViewController {
     var connectionStatusLabel = UILabel()
     var connectionButton = UIButton()
     var imageView = UIImageView()
+    var scrollView = UIScrollView()
     
     private var circleLayer = CAShapeLayer()
     private var combinedPath = UIBezierPath()
@@ -101,10 +102,11 @@ class ViewController: UIViewController {
         
         viewModel = HostVM(viewController: self)
         connectionStatusLabel = addLabel(x: 10, y: 50, w: 150, h: 30, text: "lbl", color: .cyan)
-        connectionButton = addButton(x: 10, y: 100, w: 150, h: 30, title: "connection", color: .darkGray, selector: #selector(showPeerBrowserModal))
-        _ = addButton(x: 10, y: 150, w: 150, h: 30, title: "img, pls", color: .darkGray, selector: #selector(ask4image))
-        _ = addButton(x: 10, y: 200, w: 150, h: 30, title: "send data", color: .darkGray, selector: #selector(sendData))
-        _ = addButton(x: 10, y: 250, w: 150, h: 30, title: "redraw", color: .darkGray, selector: #selector(redraw))
+        connectionButton = addButton(x: 10, y: 100, w: 100, h: 30, title: "connection", color: .darkGray, selector: #selector(showPeerBrowserModal))
+        _ = addButton(x: 10, y: 150, w: 100, h: 30, title: "img, pls", color: .darkGray, selector: #selector(ask4image))
+        _ = addButton(x: 10, y: 200, w: 100, h: 30, title: "send data", color: .darkGray, selector: #selector(sendData))
+        _ = addButton(x: 10, y: 250, w: 100, h: 30, title: "redraw", color: .darkGray, selector: #selector(redraw))
+        _ = addButton(x: 10, y: 300, w: 100, h: 30, title: "delete", color: .darkGray, selector: #selector(del))
         setupBindings()
         
 
@@ -118,10 +120,10 @@ class ViewController: UIViewController {
         print("imageView.frme = \(imageView.frame.width), \(imageView.frame.height)")
         if let im = imageView.image{
             print("im.size = \(im.size)")
-            var txt = "calib data\n"
-            txt.append((String(format: "%.1f, %.1f\n",imageView.frame.width, imageView.frame.height)))
+            var txt = "Landmark Data:\n"
+//            txt.append((String(format: "%.1f, %.1f\n",imageView.frame.width, imageView.frame.height)))
             for p in vPoint{
-                txt.append(String(format: "%.1f, %.1f\n", p.x,p.y))
+                txt.append(String(format: "%.1f %.1f\n", p.x,p.y))
             }
             print(txt)
             viewModel.sendText(txt)
@@ -129,7 +131,7 @@ class ViewController: UIViewController {
     }
     
     @objc func imageTapped(_ sender: UITapGestureRecognizer) {
-        let location = sender.location(in: view)
+        let location = sender.location(in: imageView)
         addCircle(at: location)
     }
     func addCalibPoint(_ p:CGPoint){
@@ -146,6 +148,11 @@ class ViewController: UIViewController {
         circleLayer.path = combinedPath.cgPath
     }
     
+    @objc func del(){
+        vPoint.removeLast()
+        redraw()
+    }
+    
     @objc func redraw(){
         combinedPath = UIBezierPath()
         for p in vPoint{
@@ -156,22 +163,53 @@ class ViewController: UIViewController {
         circleLayer.displayIfNeeded()
     }
     
-    
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            return imageView
+    }
     func setupImageView() {
+        
+        scrollView.delegate = self
+        scrollView.minimumZoomScale = 1.0
+        scrollView.maximumZoomScale = 6.0
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        
         imageView.isUserInteractionEnabled = true
         
         let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(imageTapped(_:)))
         tapGestureRecognizer.numberOfTapsRequired = 1
         imageView.addGestureRecognizer(tapGestureRecognizer)
         imageView.contentMode = .scaleAspectFit
-        imageView.frame = view.bounds
-        view.addSubview(imageView)
+//        imageView.frame = view.bounds
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(imageView)
+        
+        
+
+        // Set up constraints for UIScrollView
+        NSLayoutConstraint.activate([
+         scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+         scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+         scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+         scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        // Set up constraints for UIImageView
+        NSLayoutConstraint.activate([
+         imageView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+         imageView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+         imageView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+         imageView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+         imageView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+         imageView.heightAnchor.constraint(equalTo: scrollView.heightAnchor)
+        ])
+        
         
         circleLayer.frame = view.frame
         circleLayer.lineWidth = 3.0
         circleLayer.strokeColor = UIColor.red.cgColor
         circleLayer.fillColor = nil
-        view.layer.addSublayer(circleLayer)
+        imageView.layer.addSublayer(circleLayer)
     }
     
     private func setupBindings() {
